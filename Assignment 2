@@ -1,0 +1,155 @@
+import hashlib
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends import default_backend
+
+# -------------------- DATA STORAGE --------------------
+
+vehicle_registry = {}
+private_key = None
+public_key = None
+
+# -------------------- SHA-256 HASHING --------------------
+
+def generate_sha256():
+    message = input("Enter message to hash: ").strip()
+    if not message:
+        print("Error: Message cannot be empty.")
+        return
+
+    hash_result = hashlib.sha256(message.encode()).hexdigest()
+    print(f"SHA-256 Hash:\n{hash_result}")
+
+# -------------------- DIGITAL SIGNATURE --------------------
+
+def generate_keys():
+    global private_key, public_key
+
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
+    )
+
+    public_key = private_key.public_key()
+    print("Public and private keys generated successfully.")
+
+def sign_message():
+    if private_key is None:
+        print("Error: Generate keys first.")
+        return
+
+    message = input("Enter message to sign: ").strip()
+    if not message:
+        print("Error: Message cannot be empty.")
+        return
+
+    signature = private_key.sign(
+        message.encode(),
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+
+    print("Message signed successfully.")
+    return message, signature
+
+def verify_signature():
+    if public_key is None:
+        print("Error: No public key available.")
+        return
+
+    result = sign_message()
+    if not result:
+        return
+
+    message, signature = result
+
+    try:
+        public_key.verify(
+            signature,
+            message.encode(),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        print("Signature is valid.")
+    except Exception:
+        print("Signature is invalid.")
+
+# -------------------- VEHICLE REGISTRATION SYSTEM --------------------
+
+def register_vehicle():
+    plate = input("Enter vehicle number plate: ").strip()
+
+    if not plate:
+        print("Error: Number plate cannot be empty.")
+        return
+
+    if plate in vehicle_registry:
+        print("Error: Vehicle with this number plate already exists.")
+        return
+
+    owner = input("Enter owner name: ").strip()
+    model = input("Enter vehicle model: ").strip()
+
+    if not owner or not model:
+        print("Error: Owner name and model cannot be empty.")
+        return
+
+    vehicle_registry[plate] = {
+        "owner": owner,
+        "model": model
+    }
+
+    print("Vehicle registered successfully.")
+
+def retrieve_vehicle():
+    plate = input("Enter vehicle number plate: ").strip()
+
+    if plate not in vehicle_registry:
+        print("Error: Vehicle not found.")
+        return
+
+    vehicle = vehicle_registry[plate]
+    print(f"Owner: {vehicle['owner']}")
+    print(f"Model: {vehicle['model']}")
+
+# -------------------- MENU LOOP --------------------
+
+def menu():
+    while True:
+        print("\n===== Cryptography and Blockchain Fundamentals =====")
+        print("1. Generate SHA-256 Hash")
+        print("2. Generate Public-Private Key Pair")
+        print("3. Sign and Verify Message")
+        print("4. Register Vehicle")
+        print("5. Retrieve Vehicle")
+        print("6. Exit")
+
+        choice = input("Enter your choice: ").strip()
+
+        if choice == "1":
+            generate_sha256()
+        elif choice == "2":
+            generate_keys()
+        elif choice == "3":
+            verify_signature()
+        elif choice == "4":
+            register_vehicle()
+        elif choice == "5":
+            retrieve_vehicle()
+        elif choice == "6":
+            print("Exiting application.")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+# -------------------- ENTRY POINT --------------------
+
+if __name__ == "__main__":
+    menu()
